@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+[ -e minikube ] || {
+  curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+  chmod +x minikube
+}
+
+[ -e /usr/local/bin/kubectl ] || {
+  curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+  chmod +x kubectl
+  sudo mv kubectl /usr/local/bin/kubectl
+}
+
+export MINIKUBE_WANTUPDATENOTIFICATION=false
+export MINIKUBE_WANTREPORTERRORPROMPT=false
+export MINIKUBE_HOME=${HOME}
+export CHANGE_MINIKUBE_NONE_USER=true
+mkdir -p ${HOME}/.kube
+touch ${HOME}/.kube/config
+
+export KUBECONFIG="${KUBECONFIG:-${HOME}/.kube/config}"
+echo ${KUBECONFIG}
+sudo -E ./minikube start --vm-driver=none
+
+for i in $(seq 1 600); do
+  echo -n "."
+  [ $((${i} % 70)) -eq 0 ] && echo
+  kubectl get po &> /dev/null
+  [ $? -eq 0 ] && break
+  sleep 1
+done
+echo
+
+kubectl cluster-info
