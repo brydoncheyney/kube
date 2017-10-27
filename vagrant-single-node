@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+[ -e kubectl ] || {
+  echo "Downloading kubectl..."
+  curl -sO https://storage.googleapis.com/kubernetes-release/release/v1.6.1/bin/linux/amd64/kubectl
+  chmod +x kubectl
+}
+
+PATH=${PATH}:$(pwd)
+
+[ -d coreos-kubernetes ] || git clone https://github.com/coreos/coreos-kubernetes.git
+
+# https://github.com/hashicorp/vagrant/issues/8013
+sudo ln -sf /usr/local/bin/openssl /opt/vagrant/embedded/bin/openssl
+
+cd coreos-kubernetes/single-node/
+vagrant box update
+vagrant up
+
+export KUBECONFIG="${KUBECONFIG}:-$(pwd)/kubeconfig"
+kubectl config use-context vagrant-single
+
+echo "Waiting for Kubernetes api-server to become available..."
+for i in $(seq 1 600); do
+  echo -n "."
+  [ $((${i} % 70)) -eq 0 ] && echo
+  kubectl get nodes 2> /dev/null
+  [ $? -eq 0 ] && break
+  sleep 1
+done
+echo
+
+kubectl cluster-info
+
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml &> /dev/null
+nohup kubectl proxy &> /dev/null &
