@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 
-[ -e kubectl ] || {
-  echo "Downloading kubectl..."
-  curl -sO https://storage.googleapis.com/kubernetes-release/release/v1.6.1/bin/linux/amd64/kubectl
+[ -e /usr/local/bin/kubectl ] || {
+  curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
   chmod +x kubectl
+  sudo mv kubectl /usr/local/bin/kubectl
 }
-
-PATH=${PATH}:$(pwd)
 
 [ -d coreos-kubernetes ] || git clone https://github.com/coreos/coreos-kubernetes.git
 
@@ -17,7 +15,7 @@ cd coreos-kubernetes/single-node/
 vagrant box update
 vagrant up
 
-export KUBECONFIG="${KUBECONFIG}:-$(pwd)/kubeconfig"
+export KUBECONFIG="${KUBECONFIG:-$(pwd)/kubeconfig}"
 kubectl config use-context vagrant-single
 
 echo "Waiting for Kubernetes api-server to become available..."
